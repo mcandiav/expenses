@@ -1,0 +1,33 @@
+# Archivos temporales
+*.tmp
+*.temp
+*.log
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Entornos y secretos
+.env
+.env.*
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+*.cer
+
+# Dependencias y builds
+node_modules/
+dist/
+build/
+coverage/
+.cache/
+
+# Muestras financieras del proyecto
+BCI_MovimientosFacturadosInternacionales_23-04-2026.xls
+BCI_MovimientosFacturadosNacionales_25-03-2026.xls
+
+# IDE
+.vscode/
+.idea/
