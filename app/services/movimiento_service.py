@@ -1,9 +1,12 @@
 from app.repositories.movimiento_repository import (
     COLUMNAS_ORDENABLES,
     FiltrosMovimiento,
+    actualizar_categorizacion,
+    get_by_id,
     listar_movimientos,
     obtener_opciones_filtro,
 )
+from app.services.categorization_service import clasificar_glosa
 
 
 class MovimientoService:
@@ -38,3 +41,27 @@ class MovimientoService:
     @staticmethod
     def opciones_filtro() -> dict:
         return obtener_opciones_filtro()
+
+    @staticmethod
+    def reclasificar_movimiento(movimiento_id: int) -> dict | None:
+        mov = get_by_id(movimiento_id)
+        if not mov:
+            return None
+
+        resultado = clasificar_glosa(
+            mov.get("glosa_original") or "",
+            banco=mov.get("banco"),
+            producto=mov.get("tipo_fuente"),
+        )
+        actualizar_categorizacion(
+            movimiento_id=movimiento_id,
+            categoria_id=resultado.categoria_id,
+            metodo_clasificacion=resultado.metodo,
+            regla_id=resultado.regla_id,
+            revisado=False,
+        )
+        return get_by_id(movimiento_id)
+
+    @staticmethod
+    def movimiento_sin_categoria(mov: dict) -> bool:
+        return (mov.get("categoria") or "").strip() == "Por revisar"

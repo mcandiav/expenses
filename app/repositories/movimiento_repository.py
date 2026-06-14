@@ -225,3 +225,46 @@ def obtener_opciones_filtro() -> dict[str, list]:
         "estados": estados,
         "duplicados": duplicados,
     }
+
+
+def get_by_id(movimiento_id: int) -> dict | None:
+    with get_connection() as conn:
+        row = conn.execute(
+            f"{SELECT_BASE} AND m.id = ?",
+            (movimiento_id,),
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def actualizar_categorizacion(
+    movimiento_id: int,
+    categoria_id: int | None,
+    metodo_clasificacion: str,
+    regla_id: int | None,
+    revisado: bool = False,
+) -> None:
+    with get_connection() as conn:
+        existe = conn.execute(
+            "SELECT 1 FROM movimiento_categorizado WHERE movimiento_id = ?",
+            (movimiento_id,),
+        ).fetchone()
+        if existe:
+            conn.execute(
+                """
+                UPDATE movimiento_categorizado
+                SET categoria_id = ?, metodo_clasificacion = ?, regla_id = ?,
+                    revisado = ?, fecha_clasificacion = datetime('now')
+                WHERE movimiento_id = ?
+                """,
+                (categoria_id, metodo_clasificacion, regla_id, int(revisado), movimiento_id),
+            )
+        else:
+            conn.execute(
+                """
+                INSERT INTO movimiento_categorizado (
+                    movimiento_id, categoria_id, metodo_clasificacion, regla_id, revisado
+                ) VALUES (?, ?, ?, ?, ?)
+                """,
+                (movimiento_id, categoria_id, metodo_clasificacion, regla_id, int(revisado)),
+            )
+        conn.commit()

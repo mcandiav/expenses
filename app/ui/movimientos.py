@@ -5,6 +5,7 @@ import streamlit as st
 
 from app.repositories.movimiento_repository import FiltrosMovimiento
 from app.services.movimiento_service import MovimientoService
+from app.ui.regla_dialog import abrir_dialog_regla
 
 COLUMNAS_DISPLAY = {
     "fecha": "Fecha",
@@ -182,6 +183,25 @@ def render_movimientos(user: dict) -> None:
         columnas_show = [c for c in service.COLUMNAS if c in df.columns]
         df_show = df[columnas_show].rename(columns=COLUMNAS_DISPLAY)
         st.dataframe(df_show, use_container_width=True, hide_index=True)
+
+        sin_categoria = [m for m in movimientos if MovimientoService.movimiento_sin_categoria(m)]
+        if sin_categoria and user.get("rol") == "admin":
+            st.markdown("#### Sin categoría — crear regla")
+            st.caption(
+                "Movimientos de esta página sin regla aplicada. Use **Crear regla** para abrir el formulario "
+                "sin salir de Movimientos."
+            )
+            for mov in sin_categoria:
+                col_a, col_b, col_c = st.columns([3, 2, 1])
+                col_a.write(
+                    f"**#{mov['id']}** · {mov.get('fecha')} · "
+                    f"{mov.get('glosa_original') or '—'}"
+                )
+                col_b.write(f"{mov.get('monto')} {mov.get('moneda') or ''} · {mov.get('banco') or '—'}")
+                if col_c.button("➕ Crear regla", key=f"btn_regla_mov_{mov['id']}"):
+                    abrir_dialog_regla(mov, user)
+        elif sin_categoria:
+            st.caption(f"{len(sin_categoria)} movimiento(s) sin categoría en esta página.")
     else:
         st.info("No hay movimientos que coincidan con los filtros. Importe archivos desde **Subir archivos**.")
 
