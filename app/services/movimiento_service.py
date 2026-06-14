@@ -4,7 +4,6 @@ from app.repositories.movimiento_repository import (
     listar_movimientos,
     obtener_opciones_filtro,
 )
-from app.services.normalization_service import normalizar_pendientes
 
 
 class MovimientoService:
@@ -13,7 +12,14 @@ class MovimientoService:
 
     @staticmethod
     def sincronizar_desde_staging() -> int:
-        return normalizar_pendientes()
+        from app.services.normalization_service import (
+            normalizar_pendientes,
+            reprocesar_archivos_multimoneda,
+        )
+
+        total = normalizar_pendientes()
+        total += reprocesar_archivos_multimoneda()
+        return total
 
     @staticmethod
     def listar(

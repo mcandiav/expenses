@@ -15,6 +15,7 @@ COLUMNAS_DISPLAY = {
     "glosa_normalizada": "Glosa normalizada",
     "monto": "Monto",
     "moneda": "Moneda",
+    "monto_moneda_origen": "Monto moneda origen",
     "categoria": "Categoría",
     "estado": "Estado",
     "duplicado": "Duplicado",
