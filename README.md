@@ -9,6 +9,8 @@
 | V1.1 | 2026-06-12 | Revisión inicial de archivos de muestra BCI en carpeta del proyecto. | Incorporar evidencia real de entrada para orientar el requerimiento al Programador. | Se confirma que existen archivos BCI de movimientos facturados nacionales e internacionales con extensión `.xls`, pero estructura interna tipo OOXML/ZIP. | Fuentes de datos / Requerimiento para Programador |
 | V1.2 | 2026-06-12 | Definición de aplicación web monolítica dockerizada con pestañas, usuarios/roles, exportación filtrada y protección de duplicados. | Ajustar la solución a la operación real esperada: uso desde navegador, carga de archivos, revisión editable, control de duplicados y administración de usuarios. | Cambia el alcance V1 desde proceso local/CLI a app web en un solo Docker, desplegable inicialmente en servidor dev y portable a otros hosts Docker. | Arquitectura / Seguridad / Modelo de datos / Requerimiento para Programador |
 | V1.3 | 2026-06-12 | Consolidación de documentación vigente en un único README.md. | Mantener la regla del proyecto: un solo documento oficial por proyecto. | El README.md queda como única fuente vigente e incluye el requerimiento para Programador dentro del mismo documento. | Documento completo / Requerimiento para Programador |
+| V1.4 | 2026-06-14 | Unificación de Categorías y Reglas en una sola pestaña con subpestañas; inicio de implementación con Streamlit. | Decisión operativa de Miguel: catálogo maestro y reglas de matching en un mismo módulo UI. | La pestaña **Reglas y categorías** reemplaza la pestaña **Reglas** aislada; categorías se administran en subpestaña propia; stack web inicial: Python + Streamlit + SQLite. | Alcance funcional §2 / Interfaz §8.6 / Requerimiento §16 |
+| V1.5 | 2026-06-14 | Inspector BCI/Excel/CSV e implementación de pestañas Subir archivos y Archivos importados. | Primer entregable técnico obligatorio del Programador: inspección con evidencia antes del mapeo definitivo BCI. | Detección de formato por contenido; reporte de hojas/columnas/ejemplos; carga con hash antiduplicado; staging `movimiento_raw`; historial en Archivos importados. | §8.2 / §8.3 / §16.7 / Implementación |
 
 ---
 
@@ -16,7 +18,7 @@
 
 Fuente oficial de arquitectura vigente del proyecto **Categorizacion de Expensas**.
 
-Versión arquitectónica vigente: **V1.3**.
+Versión arquitectónica vigente: **V1.5**.
 
 Este README.md es el único documento vigente del proyecto. Gobierna el alcance, arquitectura, decisiones y requerimiento inicial para desarrollo. La configuración específica y el código deben ser tratados en hilos separados por los roles Configurador y Programador, pero no deben crear documentos vigentes paralelos salvo decisión explícita de Miguel.
 
@@ -49,7 +51,7 @@ La V1 debe cubrir:
 5. Usuario administrador inicial.
 6. Pestaña para administración de usuarios y roles.
 7. Roles iniciales: `admin` y `usuario`.
-8. Pestañas funcionales: Dashboard, Subir archivos, Archivos importados, Movimientos, Por revisar, Reglas, Usuarios/Roles y Exportar.
+8. Pestañas funcionales: Dashboard, Subir archivos, Archivos importados, Movimientos, Por revisar, Reglas y categorías, Usuarios/Roles y Exportar.
 9. Importar archivos `.xls`, `.xlsx` y `.csv` desde la interfaz web.
 10. Soportar archivos Excel con extensión `.xls` cuyo contenido real sea OOXML/ZIP.
 11. Registrar archivos importados y evitar reprocesamiento accidental.
@@ -363,20 +365,51 @@ Acciones:
 - marcar como revisado;
 - marcar como ignorado.
 
-### 8.6 Reglas
+### 8.6 Reglas y categorías
 
-Debe permitir administrar reglas de categorización.
+Pestaña única con **dos subpestañas**: **Categorías** y **Reglas**. Solo accesible por rol `admin` en V1.
+
+#### Subpestaña Categorías
+
+Catálogo maestro estandarizado de categorías de gasto. Las reglas y las clasificaciones de movimientos referencian categorías por `id`, nunca por texto libre duplicado.
+
+Debe permitir:
+
+- listar categorías activas e inactivas;
+- agregar categoría (nombre único, case-insensitive);
+- editar nombre y descripción/uso;
+- desactivar categoría (no eliminar físicamente si tiene movimientos o reglas asociadas);
+- eliminar solo categorías sin uso;
+- mostrar contadores de reglas y movimientos asociados (solo lectura).
+
+Campos mínimos:
+
+- nombre;
+- uso / descripción (opcional);
+- activa.
+
+#### Subpestaña Reglas
+
+Debe permitir administrar reglas de categorización que apuntan a una categoría del catálogo.
 
 Campos:
 
-- patrón;
-- categoría;
+- patrón (texto a buscar en glosa normalizada; matching por contiene);
+- categoría (selector desde catálogo);
 - prioridad;
 - banco opcional;
 - producto opcional;
 - subtipo fuente opcional;
 - activa;
 - comentario.
+
+Comportamiento:
+
+- banco vacío = regla global;
+- a igual especificidad gana mayor prioridad numérica;
+- regla más específica (con banco) gana sobre regla global;
+- botón opcional **Probar regla**: ingresar glosa de ejemplo y ver categoría resultante;
+- cambiar una regla no recategoriza movimientos históricos automáticamente; reaplicación manual queda para acción admin futura.
 
 ### 8.7 Usuarios/Roles
 
@@ -746,7 +779,7 @@ Permisos V1 propuestos:
 | Filtrar movimientos | Sí | Sí |
 | Exportar Excel | Sí | Sí |
 | Editar categoría/observación | Sí | No por defecto |
-| Administrar reglas | Sí | No |
+| Administrar categorías y reglas | Sí | No |
 | Administrar usuarios | Sí | No |
 | Resolver duplicados | Sí | No por defecto |
 
@@ -793,6 +826,8 @@ NetSuite queda fuera de alcance V1. Solo se evaluará si el proyecto evoluciona 
 | No usar PDF en V1 | Vigente | Evita complejidad de extracción/OCR. |
 | No integrar NetSuite en V1 | Vigente | El objetivo inicial es categorizar y revisar expensas. |
 | Detectar formato por contenido y no solo por extensión | Vigente | Los archivos BCI tienen extensión `.xls` pero estructura interna OOXML/ZIP. |
+| Unificar Categorías y Reglas en pestaña con subpestañas | Vigente | Reduce fricción operativa; catálogo y matching viven en un mismo módulo. |
+| Stack web inicial Streamlit + SQLite | Vigente | App monolítica Python dockerizada; suficiente para V1 con pestañas. |
 
 ---
 
@@ -807,7 +842,7 @@ Construir una aplicación web monolítica dockerizada que permita autenticar usu
 ```text
 Despliegue inicial: servidor dev
 Ejecución: Docker, un solo contenedor de aplicación
-Aplicación: web monolítica Python
+Aplicación: web monolítica Python (Streamlit)
 Base: SQLite en volumen/carpeta montada
 Entrada: .xls / .xlsx / .csv
 Salida: Excel / CSV
@@ -824,7 +859,7 @@ app/
 │   ├── archivos.py
 │   ├── movimientos.py
 │   ├── por_revisar.py
-│   ├── reglas.py
+│   ├── reglas_categorias.py
 │   ├── usuarios.py
 │   └── exportar.py
 ├── services/
@@ -837,6 +872,7 @@ app/
 ├── repositories/
 │   ├── movimiento_repository.py
 │   ├── archivo_repository.py
+│   ├── categoria_repository.py
 │   ├── regla_repository.py
 │   ├── usuario_repository.py
 │   └── auditoria_repository.py
@@ -858,7 +894,7 @@ app/
 10. Crear pestaña Movimientos con filtros por columna.
 11. Permitir exportar a Excel la vista filtrada.
 12. Crear pestaña Por revisar.
-13. Crear pestaña Reglas.
+13. Crear pestaña Reglas y categorías (subpestañas Categorías y Reglas).
 14. Crear pestaña Usuarios/Roles.
 15. Crear pestaña Exportar.
 16. Soportar carga de archivos `.xls`, `.xlsx` y `.csv`.
@@ -994,7 +1030,7 @@ Miguel debe operar desde navegador:
 
 ## 18. Pendientes de validación
 
-1. Confirmar stack definitivo de app web: Streamlit u otra alternativa Python.
+1. ~~Confirmar stack definitivo de app web: Streamlit u otra alternativa Python.~~ **Resuelto V1.4:** Streamlit.
 2. Confirmar URL/host del servidor dev.
 3. Confirmar política de contraseñas inicial.
 4. Confirmar si el rol `usuario` podrá editar categorías o solo consultar/exportar.
@@ -1003,5 +1039,34 @@ Miguel debe operar desde navegador:
 7. Confirmar si la categoría final debe separar empresa versus personal/familiar.
 8. Confirmar si los archivos reales deben permanecer dentro del proyecto o moverse a una carpeta local no versionada.
 9. Confirmar reglas iniciales definitivas por comercio/glosa.
-10. Confirmar el mapeo exacto de columnas BCI después del inspector del Programador.
+10. Confirmar el mapeo exacto de columnas BCI después del inspector del Programador. **Estado:** inspector implementado; pendiente validar con archivos BCI reales de Miguel.
 11. Confirmar si movimientos internacionales deben convertirse a CLP o mantener moneda original y monto facturado.
+
+---
+
+## 19. Despliegue técnico (implementación V1.4)
+
+```text
+docker compose up --build
+```
+
+Acceso local: `http://localhost:8501`
+
+Variables de entorno (`.env`):
+
+| Variable | Descripción | Default |
+|----------|-------------|---------|
+| `EXPENSAS_DATA_DIR` | Carpeta persistente en host | `./expensas-data` |
+| `ADMIN_EMAIL` | Email admin inicial | `admin@local` |
+| `ADMIN_PASSWORD` | Contraseña admin inicial | `admin123` |
+
+Estructura de datos en host:
+
+```text
+expensas-data/
+├── db/expensas.db
+├── uploads/
+├── exports/
+├── logs/
+└── backups/
+```

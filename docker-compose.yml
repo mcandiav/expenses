@@ -1,8 +1,16 @@
 services:
-  app:
+  categorizador-expensas:
     build: .
+    container_name: categorizador-expensas
     ports:
       - "8501:8501"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      EXPENSAS_DATA_DIR: /expensas-data
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
     volumes:
-      - ./data:/app/data
+      - ./expensas-data:/expensas-data
     restart: unless-stopped

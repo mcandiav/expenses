@@ -1,4 +1,12 @@
-# Archivos temporales
+# Datos persistentes de la aplicación
+expensas-data/
+expensas-data-test/
+
+# Archivos bancarios de muestra (no versionar datos reales)
+*.xls
+*.xlsx
+*.csv
+
 *.tmp
 *.temp
 *.log
@@ -10,6 +18,7 @@ Thumbs.db
 # Entornos y secretos
 .env
 .env.*
+!.env.example
 *.key
 *.pem
 *.p12
