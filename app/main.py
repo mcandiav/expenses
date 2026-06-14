@@ -6,6 +6,7 @@ from app.ui.login import render_login
 from app.ui.placeholders import render_placeholder
 from app.ui.reglas_categorias import render_reglas_categorias
 from app.ui.subir_archivos import render_subir_archivos
+from app.ui.usuarios import render_usuarios_roles
 
 
 def main() -> None:
@@ -64,10 +65,7 @@ def main() -> None:
         render_reglas_categorias(user)
 
     with tab_objects[6]:
-        if user["rol"] == "admin":
-            render_placeholder("Usuarios/Roles", "Administración de usuarios — próximamente.")
-        else:
-            st.error("No tiene permisos para administrar usuarios.")
+        render_usuarios_roles(user)
 
     with tab_objects[7]:
         render_placeholder("Exportar", "Exportación Excel/CSV — próximamente.")
