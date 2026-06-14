@@ -5,6 +5,7 @@ from app.ui.archivos import render_archivos_importados
 from app.ui.dashboard import render_dashboard
 from app.ui.login import render_login
 from app.ui.placeholders import render_placeholder
+from app.ui.movimientos import render_movimientos
 from app.ui.reglas_categorias import render_reglas_categorias
 from app.ui.subir_archivos import render_subir_archivos
 from app.ui.usuarios import render_usuarios_roles
@@ -57,7 +58,7 @@ def main() -> None:
         render_archivos_importados()
 
     with tab_objects[3]:
-        render_placeholder("Movimientos", "Listado filtrable de movimientos — próximamente.")
+        render_movimientos(user)
 
     with tab_objects[4]:
         render_placeholder("Por revisar", "Movimientos sin clasificar — próximamente.")

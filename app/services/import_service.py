@@ -101,6 +101,9 @@ def importar_archivo(
             filas_leidas=len(filas_raw),
             estado="inspeccionado",
         )
+        from app.services.normalization_service import normalizar_archivo
+
+        normalizar_archivo(archivo_id)
     elif not reporte.errores_lectura:
         archivo_repository.update_conteos(archivo_id, filas_leidas=0, estado="sin_filas")
 
