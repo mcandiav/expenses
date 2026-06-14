@@ -2,6 +2,7 @@ import streamlit as st
 
 from app.db.seed import seed_if_empty
 from app.ui.archivos import render_archivos_importados
+from app.ui.dashboard import render_dashboard
 from app.ui.login import render_login
 from app.ui.placeholders import render_placeholder
 from app.ui.reglas_categorias import render_reglas_categorias
@@ -44,7 +45,7 @@ def main() -> None:
     tab_objects = st.tabs(tabs_admin)
 
     with tab_objects[0]:
-        render_placeholder("Dashboard", "Resumen de importaciones y categorización — próximamente.")
+        render_dashboard(user)
 
     with tab_objects[1]:
         if user["rol"] == "admin":
