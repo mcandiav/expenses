@@ -7,9 +7,12 @@ from app.config import SESSION_MAX_AGE_SECONDS
 from app.services.auth_service import COOKIE_NAME, create_session_token, verify_session_token
 
 
-@st.cache_resource
 def _cookie_manager() -> stx.CookieManager:
-    return stx.CookieManager(key="expensas_cookie_manager")
+    if "expensas_cookie_manager" not in st.session_state:
+        st.session_state["expensas_cookie_manager"] = stx.CookieManager(
+            key="expensas_cookie_manager"
+        )
+    return st.session_state["expensas_cookie_manager"]
 
 
 def init_session() -> None:
