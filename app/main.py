@@ -1,6 +1,6 @@
 import streamlit as st
 
-from app.db.connection import bootstrap_database
+from app.db.connection import get_database_info, prepare_database
 from app.ui.archivos import render_archivos_importados
 from app.ui.dashboard import render_dashboard
 from app.ui.login import render_login
@@ -12,6 +12,12 @@ from app.ui.subir_archivos import render_subir_archivos
 from app.ui.usuarios import render_usuarios_roles
 
 
+@st.cache_resource
+def _prepare_database_once() -> bool:
+    prepare_database()
+    return True
+
+
 def main() -> None:
     st.set_page_config(
         page_title="Categorización de Expensas",
@@ -19,7 +25,8 @@ def main() -> None:
         layout="wide",
     )
 
-    db_info = bootstrap_database()
+    _prepare_database_once()
+    db_info = get_database_info()
     init_session()
 
     if "user" not in st.session_state:

@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import sqlite3
 from typing import Any
 
 from app.db.connection import get_connection
@@ -263,14 +264,15 @@ def actualizar_categorizacion(
     metodo_clasificacion: str,
     regla_id: int | None,
     revisado: bool = False,
+    conn: sqlite3.Connection | None = None,
 ) -> None:
-    with get_connection() as conn:
-        existe = conn.execute(
+    def _apply(connection: sqlite3.Connection) -> None:
+        existe = connection.execute(
             "SELECT 1 FROM movimiento_categorizado WHERE movimiento_id = ?",
             (movimiento_id,),
         ).fetchone()
         if existe:
-            conn.execute(
+            connection.execute(
                 """
                 UPDATE movimiento_categorizado
                 SET categoria_id = ?, metodo_clasificacion = ?, regla_id = ?,
@@ -280,7 +282,7 @@ def actualizar_categorizacion(
                 (categoria_id, metodo_clasificacion, regla_id, int(revisado), movimiento_id),
             )
         else:
-            conn.execute(
+            connection.execute(
                 """
                 INSERT INTO movimiento_categorizado (
                     movimiento_id, categoria_id, metodo_clasificacion, regla_id, revisado
@@ -288,4 +290,11 @@ def actualizar_categorizacion(
                 """,
                 (movimiento_id, categoria_id, metodo_clasificacion, regla_id, int(revisado)),
             )
-        conn.commit()
+
+    if conn is not None:
+        _apply(conn)
+        return
+
+    with get_connection() as connection:
+        _apply(connection)
+        connection.commit()

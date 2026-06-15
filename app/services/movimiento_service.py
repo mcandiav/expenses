@@ -1,6 +1,7 @@
 from app.repositories.movimiento_repository import (
     COLUMNAS_ORDENABLES,
     FiltrosMovimiento,
+    SELECT_BASE,
     actualizar_categorizacion,
     get_by_id,
     list_ids_por_revisar,
@@ -8,6 +9,7 @@ from app.repositories.movimiento_repository import (
     obtener_opciones_filtro,
 )
 from app.services.categorization_service import clasificar_glosa
+from app.db.connection import get_connection
 
 
 class MovimientoService:
@@ -62,14 +64,37 @@ class MovimientoService:
     @staticmethod
     def reclasificar_pendientes() -> int:
         """Reclasifica todos los movimientos pendientes (Por revisar / sin regla)."""
+        movimiento_ids = list_ids_por_revisar()
+        if not movimiento_ids:
+            return 0
+
         actualizados = 0
-        for movimiento_id in list_ids_por_revisar():
-            antes = get_by_id(movimiento_id)
-            if not antes:
-                continue
-            despues = MovimientoService.reclasificar_movimiento(movimiento_id)
-            if despues and despues.get("categoria") != "Por revisar":
-                actualizados += 1
+        with get_connection() as conn:
+            for movimiento_id in movimiento_ids:
+                row = conn.execute(
+                    f"{SELECT_BASE} AND m.id = ?",
+                    (movimiento_id,),
+                ).fetchone()
+                if not row:
+                    continue
+
+                mov = dict(row)
+                resultado = clasificar_glosa(
+                    mov.get("glosa_original") or "",
+                    banco=mov.get("banco"),
+                    producto=mov.get("tipo_fuente"),
+                )
+                actualizar_categorizacion(
+                    movimiento_id=movimiento_id,
+                    categoria_id=resultado.categoria_id,
+                    metodo_clasificacion=resultado.metodo,
+                    regla_id=resultado.regla_id,
+                    revisado=False,
+                    conn=conn,
+                )
+                if (resultado.categoria_nombre or "Por revisar") != "Por revisar":
+                    actualizados += 1
+            conn.commit()
         return actualizados
 
     @staticmethod
