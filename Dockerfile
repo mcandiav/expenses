@@ -13,6 +13,8 @@ COPY app ./app
 ENV EXPENSAS_DATA_DIR=/expensas-data
 ENV PYTHONPATH=/app
 
+VOLUME ["/expensas-data"]
+
 EXPOSE 8501
 
 CMD ["streamlit", "run", "app/main.py", \

@@ -49,7 +49,18 @@ En el servicio **n8n → expenses**, configurar un **mount persistente**:
 | Campo | Valor |
 |-------|--------|
 | **Ruta en el contenedor** | `/expensas-data` |
+| **Nombre volumen** | `expenses-data` (sin `/` al inicio) |
 | **Tipo** | Volumen persistente (named volume de EasyPanel) |
+
+**Importante al crear el mount:**
+- Campo **nombre del volumen** → `expenses-data` (sin barra `/`)
+- Campo **ruta / mount path** → `/expensas-data` (con `/` al inicio, slash normal `/`)
+- No invertir los campos: el nombre del volumen **nunca** lleva `/`
+
+Si EasyPanel muestra `invalid mount target, must be an absolute path`:
+1. Eliminar el mount actual (Remove).
+2. Volver a **Add Volume Mount** y escribir la ruta a mano (no copiar/pegar).
+3. Alternativa: usar ruta `/data` y variable `EXPENSAS_DATA_DIR=/data` en Environment.
 
 Debe existir **antes** del próximo redeploy con datos reales.
 
