@@ -12,6 +12,7 @@
 | V1.4 | 2026-06-14 | Unificación de Categorías y Reglas en una sola pestaña con subpestañas; inicio de implementación con Streamlit. | Decisión operativa de Miguel: catálogo maestro y reglas de matching en un mismo módulo UI. | La pestaña **Reglas y categorías** reemplaza la pestaña **Reglas** aislada; categorías se administran en subpestaña propia; stack web inicial: Python + Streamlit + SQLite. | Alcance funcional §2 / Interfaz §8.6 / Requerimiento §16 |
 | V1.5 | 2026-06-14 | Inspector BCI/Excel/CSV e implementación de pestañas Subir archivos y Archivos importados. | Primer entregable técnico obligatorio del Programador: inspección con evidencia antes del mapeo definitivo BCI. | Detección de formato por contenido; reporte de hojas/columnas/ejemplos; carga con hash antiduplicado; staging `movimiento_raw`; historial en Archivos importados. | §8.2 / §8.3 / §16.7 / Implementación |
 | V1.6 | 2026-06-14 | Política de persistencia de datos en actualizaciones y despliegues. | Miguel ingresa data real; rebuild/deploy no debe borrar SQLite, uploads ni clasificaciones. | Volumen host obligatorio; seed solo en BD vacía; migraciones idempotentes una sola vez; sin reproceso destructivo automático al abrir Movimientos. | §7 / §19 / §20 |
+| V1.6.1 | 2026-06-14 | Documento `infra.md` con entorno EasyPanel + Cloudflare. | Pérdida de datos en redeploy: EasyPanel no montaba `/expensas-data` desde docker-compose. | Instrucciones de mount persistente en panel; causa raíz documentada. | infra.md / §20 |
 
 ---
 
@@ -1119,7 +1120,22 @@ expensas-data/  →  expensas-data/backups/backup-AAAA-MM-DD/
 
 Mínimo crítico: `expensas-data/db/expensas.db`.
 
-### Coolify / servidor dev
+### EasyPanel (entorno actual: proyecto `n8n`, app `expenses`)
+
+Ver **`infra.md`** para detalle operativo.
+
+**Crítico:** EasyPanel usa el Dockerfile del repo; **no** aplica solo el `docker-compose.yml`. Debe configurarse en el panel un **mount persistente**:
+
+| Ruta en contenedor | `/expensas-data` |
+|--------------------|------------------|
+
+Sin ese mount, cada redeploy inicia con base SQLite vacía.
+
+Variables en pestaña **Environment**: `EXPENSAS_DATA_DIR=/expensas-data`.
+
+Acceso público vía **Cloudflare** (Domains en EasyPanel); no afecta persistencia.
+
+### Coolify / servidor dev (referencia)
 
 En el panel de deploy, verificar que exista un **persistent storage** apuntando a `/expensas-data` (o la ruta configurada en `EXPENSAS_DATA_DIR`). Sin ese montaje, cada redeploy crea una base vacía.
 
