@@ -26,6 +26,37 @@ def list_reglas(incluir_inactivas: bool = True) -> list[dict]:
     return [dict(row) for row in rows]
 
 
+def find_regla_duplicada(
+    patron: str,
+    categoria_id: int,
+    banco_opcional: str | None = None,
+) -> dict | None:
+    patron_norm = normalizar_glosa(patron)
+    banco_norm = banco_opcional.strip().upper() if banco_opcional else None
+    with get_connection() as conn:
+        if banco_norm:
+            row = conn.execute(
+                """
+                SELECT r.*, c.nombre AS categoria_nombre
+                FROM regla_categoria r
+                JOIN categoria c ON c.id = r.categoria_id
+                WHERE r.patron = ? AND r.categoria_id = ? AND r.banco_opcional = ? AND r.activa = 1
+                """,
+                (patron_norm, categoria_id, banco_norm),
+            ).fetchone()
+        else:
+            row = conn.execute(
+                """
+                SELECT r.*, c.nombre AS categoria_nombre
+                FROM regla_categoria r
+                JOIN categoria c ON c.id = r.categoria_id
+                WHERE r.patron = ? AND r.categoria_id = ? AND r.banco_opcional IS NULL AND r.activa = 1
+                """,
+                (patron_norm, categoria_id),
+            ).fetchone()
+    return dict(row) if row else None
+
+
 def get_regla_by_id(regla_id: int) -> dict | None:
     with get_connection() as conn:
         row = conn.execute(

@@ -128,7 +128,7 @@ def _render_reglas(user_id: int | None) -> None:
                 st.error("Debe existir al menos una categoría activa.")
             else:
                 try:
-                    regla_service.crear(
+                    resultado = regla_service.crear_y_aplicar(
                         patron=patron,
                         categoria_id=cat_map[categoria_nombre],
                         prioridad=int(prioridad),
@@ -136,7 +136,17 @@ def _render_reglas(user_id: int | None) -> None:
                         comentario=comentario or None,
                         usuario_id=user_id,
                     )
-                    st.success("Regla creada.")
+                    if resultado.duplicada:
+                        st.warning(
+                            f"Ya existía una regla igual (ID {resultado.regla['id']}). "
+                            f"No se creó una duplicada."
+                        )
+                    if resultado.movimientos_actualizados:
+                        st.success(
+                            f"Regla aplicada a {resultado.movimientos_actualizados} movimiento(s)."
+                        )
+                    else:
+                        st.success("Regla creada.")
                     st.rerun()
                 except ValueError as exc:
                     st.error(str(exc))

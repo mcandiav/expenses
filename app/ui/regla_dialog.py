@@ -2,7 +2,6 @@ import streamlit as st
 
 from app.services.categoria_service import CategoriaService, ReglaService
 from app.services.categorization_service import clasificar_glosa
-from app.services.movimiento_service import MovimientoService
 
 
 def sugerir_patron(glosa_normalizada: str, glosa_original: str) -> str:
@@ -61,28 +60,41 @@ def _render_contenido_dialog(mov: dict, user: dict) -> None:
                 "Comentario",
                 value=f"Creada desde movimiento #{mov.get('id')}",
             )
-            aplicar_ahora = st.checkbox("Aplicar al movimiento actual", value=True)
+            aplicar_todos = st.checkbox(
+                "Aplicar a todos los movimientos que cumplan la regla",
+                value=True,
+            )
 
             if st.form_submit_button("Guardar regla", type="primary"):
                 if not patron.strip():
                     st.error("El patrón es obligatorio.")
                     return
                 try:
-                    regla = regla_service.crear(
+                    resultado = regla_service.crear_y_aplicar(
                         patron=patron,
                         categoria_id=cat_map[categoria_nombre],
                         prioridad=int(prioridad),
                         banco_opcional=banco or None,
                         comentario=comentario or None,
                         usuario_id=user.get("id"),
+                        aplicar_pendientes=aplicar_todos,
                     )
-                    if aplicar_ahora and mov.get("id"):
-                        MovimientoService.reclasificar_movimiento(int(mov["id"]))
-
-                    st.success(
-                        f"Regla creada (ID {regla['id']}). "
-                        f"Patrón `{regla['patron']}` → {categoria_nombre}."
-                    )
+                    regla = resultado.regla
+                    if resultado.duplicada:
+                        st.warning(
+                            f"Ya existía una regla igual (ID {regla['id']}). "
+                            f"No se creó una duplicada."
+                        )
+                    if resultado.movimientos_actualizados:
+                        st.success(
+                            f"Regla `{regla['patron']}` → {categoria_nombre}. "
+                            f"Se categorizaron {resultado.movimientos_actualizados} movimiento(s)."
+                        )
+                    else:
+                        st.success(
+                            f"Regla guardada (ID {regla['id']}). "
+                            f"Patrón `{regla['patron']}` → {categoria_nombre}."
+                        )
                     st.rerun()
                 except ValueError as exc:
                     st.error(str(exc))

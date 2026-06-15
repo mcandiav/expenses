@@ -227,6 +227,27 @@ def obtener_opciones_filtro() -> dict[str, list]:
     }
 
 
+def list_ids_por_revisar() -> list[int]:
+    with get_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT m.id
+            FROM movimiento m
+            LEFT JOIN movimiento_categorizado mc ON mc.movimiento_id = m.id
+            LEFT JOIN categoria c ON c.id = COALESCE(mc.categoria_manual_id, mc.categoria_id)
+            WHERE m.activo = 1
+              AND COALESCE(mc.revisado, 0) = 0
+              AND (
+                    c.nombre = 'Por revisar'
+                    OR mc.movimiento_id IS NULL
+                    OR mc.metodo_clasificacion = 'sin_regla'
+                  )
+            ORDER BY m.id
+            """
+        ).fetchall()
+    return [int(row["id"]) for row in rows]
+
+
 def get_by_id(movimiento_id: int) -> dict | None:
     with get_connection() as conn:
         row = conn.execute(

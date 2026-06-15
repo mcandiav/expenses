@@ -12,6 +12,9 @@ DB_PATH = DB_DIR / "expensas.db"
 ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "admin@local")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123")
 
+SESSION_SECRET = os.environ.get("SESSION_SECRET", "expensas-dev-secret-change-in-prod")
+SESSION_MAX_AGE_SECONDS = int(os.environ.get("SESSION_MAX_AGE_DAYS", "7")) * 86400
+
 
 def ensure_data_dirs() -> None:
     for path in (DB_DIR, UPLOADS_DIR, EXPORTS_DIR, LOGS_DIR, BACKUPS_DIR):

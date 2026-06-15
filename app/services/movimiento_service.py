@@ -3,6 +3,7 @@ from app.repositories.movimiento_repository import (
     FiltrosMovimiento,
     actualizar_categorizacion,
     get_by_id,
+    list_ids_por_revisar,
     listar_movimientos,
     obtener_opciones_filtro,
 )
@@ -57,6 +58,19 @@ class MovimientoService:
             revisado=False,
         )
         return get_by_id(movimiento_id)
+
+    @staticmethod
+    def reclasificar_pendientes() -> int:
+        """Reclasifica todos los movimientos pendientes (Por revisar / sin regla)."""
+        actualizados = 0
+        for movimiento_id in list_ids_por_revisar():
+            antes = get_by_id(movimiento_id)
+            if not antes:
+                continue
+            despues = MovimientoService.reclasificar_movimiento(movimiento_id)
+            if despues and despues.get("categoria") != "Por revisar":
+                actualizados += 1
+        return actualizados
 
     @staticmethod
     def movimiento_sin_categoria(mov: dict) -> bool:

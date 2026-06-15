@@ -36,6 +36,20 @@ def authenticate(email: str, password: str) -> dict | None:
     }
 
 
+def get_usuario_activo_por_id(usuario_id: int) -> dict | None:
+    with get_connection() as conn:
+        row = conn.execute(
+            """
+            SELECT u.id, u.email, u.nombre, r.nombre AS rol
+            FROM usuario u
+            JOIN rol r ON r.id = u.rol_id
+            WHERE u.id = ? AND u.activo = 1
+            """,
+            (usuario_id,),
+        ).fetchone()
+    return dict(row) if row else None
+
+
 def list_usuarios(incluir_inactivos: bool = True) -> list[dict]:
     query = """
         SELECT

@@ -7,6 +7,7 @@ from app.ui.login import render_login
 from app.ui.placeholders import render_placeholder
 from app.ui.movimientos import render_movimientos
 from app.ui.reglas_categorias import render_reglas_categorias
+from app.ui.session_auth import clear_session, init_session
 from app.ui.subir_archivos import render_subir_archivos
 from app.ui.usuarios import render_usuarios_roles
 
@@ -19,6 +20,7 @@ def main() -> None:
     )
 
     db_info = bootstrap_database()
+    init_session()
 
     if "user" not in st.session_state:
         render_login()
@@ -33,7 +35,7 @@ def main() -> None:
             f"📁 {db_info['total_movimientos']} mov. · {db_info['total_archivos']} archivos"
         )
         if st.button("Cerrar sesión"):
-            del st.session_state["user"]
+            clear_session()
             st.rerun()
 
     tabs_admin = [

@@ -1,6 +1,7 @@
 import streamlit as st
 
 from app.repositories.usuario_repository import authenticate
+from app.ui.session_auth import persist_session
 
 
 def render_login() -> bool:
@@ -16,6 +17,7 @@ def render_login() -> bool:
         user = authenticate(email, password)
         if user:
             st.session_state["user"] = user
+            persist_session(user)
             st.rerun()
         else:
             st.error("Credenciales inválidas o usuario inactivo.")
