@@ -1,0 +1,11 @@
+# Ejemplo opcional: volumen nombrado (sobrevive aunque cambie la ruta del proyecto).
+# Copiar a docker-compose.override.yml solo si no usa ya ./expensas-data con datos.
+#
+# services:
+#   categorizador-expensas:
+#     volumes:
+#       - categorizador-expensas-data:/expensas-data
+#
+# volumes:
+#   categorizador-expensas-data:
+#     name: categorizador-expensas-data

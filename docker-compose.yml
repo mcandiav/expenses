@@ -12,5 +12,6 @@ services:
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@local}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
     volumes:
+      # Datos persistentes FUERA del contenedor. No quitar este volumen en rebuild/deploy.
       - ./expensas-data:/expensas-data
     restart: unless-stopped

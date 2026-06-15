@@ -11,6 +11,7 @@
 | V1.3 | 2026-06-12 | Consolidación de documentación vigente en un único README.md. | Mantener la regla del proyecto: un solo documento oficial por proyecto. | El README.md queda como única fuente vigente e incluye el requerimiento para Programador dentro del mismo documento. | Documento completo / Requerimiento para Programador |
 | V1.4 | 2026-06-14 | Unificación de Categorías y Reglas en una sola pestaña con subpestañas; inicio de implementación con Streamlit. | Decisión operativa de Miguel: catálogo maestro y reglas de matching en un mismo módulo UI. | La pestaña **Reglas y categorías** reemplaza la pestaña **Reglas** aislada; categorías se administran en subpestaña propia; stack web inicial: Python + Streamlit + SQLite. | Alcance funcional §2 / Interfaz §8.6 / Requerimiento §16 |
 | V1.5 | 2026-06-14 | Inspector BCI/Excel/CSV e implementación de pestañas Subir archivos y Archivos importados. | Primer entregable técnico obligatorio del Programador: inspección con evidencia antes del mapeo definitivo BCI. | Detección de formato por contenido; reporte de hojas/columnas/ejemplos; carga con hash antiduplicado; staging `movimiento_raw`; historial en Archivos importados. | §8.2 / §8.3 / §16.7 / Implementación |
+| V1.6 | 2026-06-14 | Política de persistencia de datos en actualizaciones y despliegues. | Miguel ingresa data real; rebuild/deploy no debe borrar SQLite, uploads ni clasificaciones. | Volumen host obligatorio; seed solo en BD vacía; migraciones idempotentes una sola vez; sin reproceso destructivo automático al abrir Movimientos. | §7 / §19 / §20 |
 
 ---
 
@@ -18,7 +19,7 @@
 
 Fuente oficial de arquitectura vigente del proyecto **Categorizacion de Expensas**.
 
-Versión arquitectónica vigente: **V1.5**.
+Versión arquitectónica vigente: **V1.6**.
 
 Este README.md es el único documento vigente del proyecto. Gobierna el alcance, arquitectura, decisiones y requerimiento inicial para desarrollo. La configuración específica y el código deben ser tratados en hilos separados por los roles Configurador y Programador, pero no deben crear documentos vigentes paralelos salvo decisión explícita de Miguel.
 
@@ -1070,3 +1071,58 @@ expensas-data/
 ├── logs/
 └── backups/
 ```
+
+---
+
+## 20. Persistencia de datos (actualizaciones y rebuild)
+
+### Principio
+
+Los datos de negocio viven **fuera del contenedor**, en el volumen montado `expensas-data/` del host. Un `docker compose up --build` **reemplaza solo la imagen de la app**, no la base ni los archivos subidos.
+
+### Qué se conserva en cada actualización
+
+| Dato | Ubicación | ¿Se conserva? |
+|------|-----------|---------------|
+| Base SQLite | `expensas-data/db/expensas.db` | Sí, si el volumen persiste |
+| Archivos subidos | `expensas-data/uploads/` | Sí |
+| Usuarios y contraseñas | SQLite | Sí (seed no sobrescribe) |
+| Categorías y reglas creadas | SQLite | Sí |
+| Movimientos y clasificaciones | SQLite | Sí |
+| Exportaciones | `expensas-data/exports/` | Sí |
+
+### Reglas de implementación vigentes
+
+1. `CREATE TABLE IF NOT EXISTS` — nunca `DROP` ni `TRUNCATE` en arranque.
+2. **Seed inicial** solo si tablas vacías (usuarios/categorías/reglas).
+3. **Migraciones** registradas en `schema_migrations` — cada una corre **una sola vez**.
+4. **Normalización** desde staging solo **agrega** filas nuevas; no borra movimientos existentes.
+5. **Reproceso destructivo** (borrar y volver a importar un archivo) solo vía migración explícita o acción admin futura, nunca automático al abrir la UI.
+
+### Deploy seguro (checklist)
+
+```text
+✓ Montar volumen: ./expensas-data:/expensas-data (o volumen nombrado equivalente)
+✓ docker compose up --build
+✗ NO usar: docker compose down -v  (el -v borra volúmenes nombrados)
+✗ NO eliminar la carpeta expensas-data/ del host
+✗ NO cambiar EXPENSAS_DATA_DIR sin migrar la carpeta manualmente
+```
+
+### Backup recomendado antes de actualizar
+
+Copiar la carpeta completa:
+
+```text
+expensas-data/  →  expensas-data/backups/backup-AAAA-MM-DD/
+```
+
+Mínimo crítico: `expensas-data/db/expensas.db`.
+
+### Coolify / servidor dev
+
+En el panel de deploy, verificar que exista un **persistent storage** apuntando a `/expensas-data` (o la ruta configurada en `EXPENSAS_DATA_DIR`). Sin ese montaje, cada redeploy crea una base vacía.
+
+### Diagnóstico en la app
+
+El sidebar muestra conteo de movimientos y archivos. Si tras un deploy esos números vuelven a **0**, el volumen no está montado correctamente.

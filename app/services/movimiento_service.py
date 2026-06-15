@@ -15,14 +15,10 @@ class MovimientoService:
 
     @staticmethod
     def sincronizar_desde_staging() -> int:
-        from app.services.normalization_service import (
-            normalizar_pendientes,
-            reprocesar_archivos_multimoneda,
-        )
+        """Solo agrega movimientos nuevos desde staging. No reprocesa ni borra existentes."""
+        from app.services.normalization_service import normalizar_pendientes
 
-        total = normalizar_pendientes()
-        total += reprocesar_archivos_multimoneda()
-        return total
+        return normalizar_pendientes()
 
     @staticmethod
     def listar(

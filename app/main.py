@@ -1,6 +1,6 @@
 import streamlit as st
 
-from app.db.seed import seed_if_empty
+from app.db.connection import bootstrap_database
 from app.ui.archivos import render_archivos_importados
 from app.ui.dashboard import render_dashboard
 from app.ui.login import render_login
@@ -18,7 +18,7 @@ def main() -> None:
         layout="wide",
     )
 
-    seed_if_empty()
+    db_info = bootstrap_database()
 
     if "user" not in st.session_state:
         render_login()
@@ -29,6 +29,9 @@ def main() -> None:
     with st.sidebar:
         st.markdown(f"**{user['nombre']}**")
         st.caption(f"{user['email']} · rol `{user['rol']}`")
+        st.caption(
+            f"📁 {db_info['total_movimientos']} mov. · {db_info['total_archivos']} archivos"
+        )
         if st.button("Cerrar sesión"):
             del st.session_state["user"]
             st.rerun()

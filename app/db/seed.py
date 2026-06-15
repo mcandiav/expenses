@@ -6,7 +6,7 @@ from pathlib import Path
 import bcrypt
 
 from app.config import ADMIN_EMAIL, ADMIN_PASSWORD
-from app.db.connection import get_connection, init_db
+from app.db.connection import get_connection
 
 CATEGORIAS_INICIALES = [
     ("Marketing / publicidad", "Meta Ads, Google Ads, campañas"),
@@ -57,7 +57,10 @@ def _hash_password(password: str) -> str:
 
 
 def seed_if_empty() -> None:
-    init_db()
+    """
+    Semilla inicial solo en base vacía.
+    Si ya hay usuarios, categorías o reglas, no modifica nada existente.
+    """
     with get_connection() as conn:
         if conn.execute("SELECT COUNT(*) FROM rol").fetchone()[0] == 0:
             conn.executemany(
