@@ -82,10 +82,14 @@ def _render_contenido_dialog(mov: dict, user: dict) -> None:
                     regla = resultado.regla
                     if resultado.duplicada:
                         st.warning(
-                            f"Ya existía una regla igual (ID {regla['id']}). "
+                            f"Ya existía una regla con el mismo patrón (ID {regla['id']}). "
                             f"No se creó una duplicada."
                         )
-                    if resultado.movimientos_actualizados:
+                        if resultado.movimientos_actualizados:
+                            st.info(
+                                f"Se aplicó a {resultado.movimientos_actualizados} movimiento(s) pendiente(s)."
+                            )
+                    elif resultado.movimientos_actualizados:
                         st.success(
                             f"Regla `{regla['patron']}` → {categoria_nombre}. "
                             f"Se categorizaron {resultado.movimientos_actualizados} movimiento(s)."

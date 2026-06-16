@@ -85,16 +85,20 @@ class ReglaService:
         if not categoria_repository.get_categoria_by_id(categoria_id):
             raise ValueError("La categoría seleccionada no existe.")
 
-        existente = regla_repository.find_regla_duplicada(
-            patron=patron,
-            categoria_id=categoria_id,
-            banco_opcional=banco_opcional,
-        )
+        existente = regla_repository.find_regla_por_patron_y_banco(patron, banco_opcional)
         if existente:
-            regla = existente
-            duplicada = True
+            if existente["categoria_id"] == categoria_id:
+                regla = existente
+                duplicada = True
+            else:
+                ambito = existente["banco_opcional"] or "GLOBAL"
+                raise ValueError(
+                    f"Ya existe una regla con el patrón «{existente['patron']}» "
+                    f"({ambito}) asignada a «{existente['categoria_nombre']}» "
+                    f"(ID {existente['id']}). Edítela en Reglas y categorías."
+                )
         else:
-            regla = regla_repository.create_regla(
+            regla, creada = regla_repository.create_regla(
                 patron=patron,
                 categoria_id=categoria_id,
                 prioridad=prioridad,
@@ -104,7 +108,17 @@ class ReglaService:
                 comentario=comentario,
                 usuario_id=usuario_id,
             )
-            duplicada = False
+            if not creada:
+                if regla["categoria_id"] != categoria_id:
+                    ambito = regla["banco_opcional"] or "GLOBAL"
+                    raise ValueError(
+                        f"Ya existe una regla con el patrón «{regla['patron']}» "
+                        f"({ambito}) asignada a «{regla['categoria_nombre']}» "
+                        f"(ID {regla['id']}). Edítela en Reglas y categorías."
+                    )
+                duplicada = True
+            else:
+                duplicada = False
 
         movimientos_actualizados = 0
         if aplicar_pendientes:
@@ -132,6 +146,18 @@ class ReglaService:
     ) -> None:
         if not patron.strip():
             raise ValueError("El patrón de glosa es obligatorio.")
+
+        existente = regla_repository.find_regla_por_patron_y_banco(
+            patron, banco_opcional, excluir_regla_id=regla_id
+        )
+        if existente:
+            ambito = existente["banco_opcional"] or "GLOBAL"
+            raise ValueError(
+                f"Ya existe otra regla con el patrón «{existente['patron']}» "
+                f"({ambito}) asignada a «{existente['categoria_nombre']}» "
+                f"(ID {existente['id']})."
+            )
+
         regla_repository.update_regla(
             regla_id=regla_id,
             patron=patron,

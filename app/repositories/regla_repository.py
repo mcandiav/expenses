@@ -1,5 +1,53 @@
+import sqlite3
+
 from app.db.connection import get_connection
 from app.services.text_utils import normalizar_glosa
+
+
+def _normalizar_banco(banco_opcional: str | None) -> str | None:
+    if not banco_opcional or not str(banco_opcional).strip():
+        return None
+    return str(banco_opcional).strip().upper()
+
+
+def find_regla_por_patron_y_banco(
+    patron: str,
+    banco_opcional: str | None = None,
+    excluir_regla_id: int | None = None,
+) -> dict | None:
+    """Busca regla activa con el mismo patrón normalizado y mismo ámbito de banco."""
+    patron_norm = normalizar_glosa(patron)
+    banco_norm = _normalizar_banco(banco_opcional)
+    query = """
+        SELECT r.*, c.nombre AS categoria_nombre
+        FROM regla_categoria r
+        JOIN categoria c ON c.id = r.categoria_id
+        WHERE r.patron = ? AND r.activa = 1
+    """
+    params: list = [patron_norm]
+    if banco_norm:
+        query += " AND r.banco_opcional = ?"
+        params.append(banco_norm)
+    else:
+        query += " AND r.banco_opcional IS NULL"
+    if excluir_regla_id is not None:
+        query += " AND r.id != ?"
+        params.append(excluir_regla_id)
+
+    with get_connection() as conn:
+        row = conn.execute(query, params).fetchone()
+    return dict(row) if row else None
+
+
+def find_regla_duplicada(
+    patron: str,
+    categoria_id: int,
+    banco_opcional: str | None = None,
+) -> dict | None:
+    existente = find_regla_por_patron_y_banco(patron, banco_opcional)
+    if existente and existente["categoria_id"] == categoria_id:
+        return existente
+    return None
 
 
 def list_reglas(incluir_inactivas: bool = True) -> list[dict]:
@@ -26,37 +74,6 @@ def list_reglas(incluir_inactivas: bool = True) -> list[dict]:
     return [dict(row) for row in rows]
 
 
-def find_regla_duplicada(
-    patron: str,
-    categoria_id: int,
-    banco_opcional: str | None = None,
-) -> dict | None:
-    patron_norm = normalizar_glosa(patron)
-    banco_norm = banco_opcional.strip().upper() if banco_opcional else None
-    with get_connection() as conn:
-        if banco_norm:
-            row = conn.execute(
-                """
-                SELECT r.*, c.nombre AS categoria_nombre
-                FROM regla_categoria r
-                JOIN categoria c ON c.id = r.categoria_id
-                WHERE r.patron = ? AND r.categoria_id = ? AND r.banco_opcional = ? AND r.activa = 1
-                """,
-                (patron_norm, categoria_id, banco_norm),
-            ).fetchone()
-        else:
-            row = conn.execute(
-                """
-                SELECT r.*, c.nombre AS categoria_nombre
-                FROM regla_categoria r
-                JOIN categoria c ON c.id = r.categoria_id
-                WHERE r.patron = ? AND r.categoria_id = ? AND r.banco_opcional IS NULL AND r.activa = 1
-                """,
-                (patron_norm, categoria_id),
-            ).fetchone()
-    return dict(row) if row else None
-
-
 def get_regla_by_id(regla_id: int) -> dict | None:
     with get_connection() as conn:
         row = conn.execute(
@@ -80,30 +97,41 @@ def create_regla(
     subtipo_fuente_opcional: str | None = None,
     comentario: str | None = None,
     usuario_id: int | None = None,
-) -> dict:
+) -> tuple[dict, bool]:
+    """Inserta regla. Retorna (regla, True) si se creó o (existente, False) si ya existía."""
     patron_norm = normalizar_glosa(patron)
+    banco_norm = _normalizar_banco(banco_opcional)
     with get_connection() as conn:
-        cursor = conn.execute(
-            """
-            INSERT INTO regla_categoria
-            (patron, categoria_id, prioridad, banco_opcional, producto_opcional,
-             subtipo_fuente_opcional, activa, comentario, creado_por_usuario_id)
-            VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)
-            """,
-            (
-                patron_norm,
-                categoria_id,
-                prioridad,
-                banco_opcional.strip().upper() if banco_opcional else None,
-                producto_opcional.strip() if producto_opcional else None,
-                subtipo_fuente_opcional.strip() if subtipo_fuente_opcional else None,
-                comentario.strip() if comentario else None,
-                usuario_id,
-            ),
-        )
-        conn.commit()
-        regla_id = cursor.lastrowid
-    return get_regla_by_id(regla_id)
+        try:
+            cursor = conn.execute(
+                """
+                INSERT INTO regla_categoria
+                (patron, categoria_id, prioridad, banco_opcional, producto_opcional,
+                 subtipo_fuente_opcional, activa, comentario, creado_por_usuario_id)
+                VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)
+                """,
+                (
+                    patron_norm,
+                    categoria_id,
+                    prioridad,
+                    banco_norm,
+                    producto_opcional.strip() if producto_opcional else None,
+                    subtipo_fuente_opcional.strip() if subtipo_fuente_opcional else None,
+                    comentario.strip() if comentario else None,
+                    usuario_id,
+                ),
+            )
+            conn.commit()
+            regla_id = cursor.lastrowid
+        except sqlite3.IntegrityError:
+            existente = find_regla_por_patron_y_banco(patron, banco_opcional)
+            if existente:
+                return existente, False
+            raise
+    regla = get_regla_by_id(regla_id)
+    if not regla:
+        raise RuntimeError("No se pudo recuperar la regla recién creada.")
+    return regla, True
 
 
 def update_regla(
@@ -118,6 +146,7 @@ def update_regla(
     comentario: str | None,
 ) -> None:
     patron_norm = normalizar_glosa(patron)
+    banco_norm = _normalizar_banco(banco_opcional)
     with get_connection() as conn:
         conn.execute(
             """
@@ -130,7 +159,7 @@ def update_regla(
                 patron_norm,
                 categoria_id,
                 prioridad,
-                banco_opcional.strip().upper() if banco_opcional else None,
+                banco_norm,
                 producto_opcional.strip() if producto_opcional else None,
                 subtipo_fuente_opcional.strip() if subtipo_fuente_opcional else None,
                 int(activa),

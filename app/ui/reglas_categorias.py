@@ -138,10 +138,14 @@ def _render_reglas(user_id: int | None) -> None:
                     )
                     if resultado.duplicada:
                         st.warning(
-                            f"Ya existía una regla igual (ID {resultado.regla['id']}). "
+                            f"Ya existía una regla con el mismo patrón (ID {resultado.regla['id']}). "
                             f"No se creó una duplicada."
                         )
-                    if resultado.movimientos_actualizados:
+                        if resultado.movimientos_actualizados:
+                            st.info(
+                                f"Se aplicó a {resultado.movimientos_actualizados} movimiento(s) pendiente(s)."
+                            )
+                    elif resultado.movimientos_actualizados:
                         st.success(
                             f"Regla aplicada a {resultado.movimientos_actualizados} movimiento(s)."
                         )

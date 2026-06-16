@@ -43,6 +43,25 @@ def run_data_migrations() -> None:
 
     _migration_20260614_fix_multimoneda_internacional()
     _migration_schema_columns()
+    _migration_regla_patron_banco_unique()
+
+
+def _migration_regla_patron_banco_unique() -> None:
+    migration_id = "20260614_regla_patron_banco_unique"
+    if _migration_aplicada(migration_id):
+        return
+
+    with get_connection() as conn:
+        conn.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_regla_patron_banco_activa
+            ON regla_categoria(patron, COALESCE(banco_opcional, ''))
+            WHERE activa = 1
+            """
+        )
+        conn.commit()
+
+    _marcar_migration(migration_id, "Índice único patrón+banco en reglas activas.")
 
 
 def _migration_20260614_fix_multimoneda_internacional() -> None:
