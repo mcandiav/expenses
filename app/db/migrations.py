@@ -52,6 +52,7 @@ def _migration_regla_patron_banco_unique() -> None:
         return
 
     with get_connection() as conn:
+        desactivadas = _desactivar_reglas_duplicadas(conn)
         conn.execute(
             """
             CREATE UNIQUE INDEX IF NOT EXISTS idx_regla_patron_banco_activa
@@ -61,7 +62,35 @@ def _migration_regla_patron_banco_unique() -> None:
         )
         conn.commit()
 
-    _marcar_migration(migration_id, "Índice único patrón+banco en reglas activas.")
+    detalle = "Índice único patrón+banco en reglas activas."
+    if desactivadas:
+        detalle += f" Se desactivaron {desactivadas} regla(s) duplicada(s) preexistente(s)."
+    _marcar_migration(migration_id, detalle)
+
+
+def _desactivar_reglas_duplicadas(conn) -> int:
+    """Deja una sola regla activa por patrón+banco; desactiva el resto."""
+    rows = conn.execute(
+        """
+        SELECT id, patron, banco_opcional, prioridad
+        FROM regla_categoria
+        WHERE activa = 1
+        ORDER BY prioridad DESC, id ASC
+        """
+    ).fetchall()
+
+    vistos: set[tuple[str, str]] = set()
+    duplicadas: list[int] = []
+    for row in rows:
+        clave = (row["patron"], row["banco_opcional"] or "")
+        if clave in vistos:
+            duplicadas.append(int(row["id"]))
+        else:
+            vistos.add(clave)
+
+    for regla_id in duplicadas:
+        conn.execute("UPDATE regla_categoria SET activa = 0 WHERE id = ?", (regla_id,))
+    return len(duplicadas)
 
 
 def _migration_20260614_fix_multimoneda_internacional() -> None:
