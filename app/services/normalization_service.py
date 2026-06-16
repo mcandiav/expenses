@@ -186,7 +186,7 @@ def _mapear_raw_a_movimiento(archivo: dict, fila_origen: int, data: dict[str, An
     if "—" in tipo_fuente:
         tipo_fuente = tipo_fuente.split("—", 1)[0].strip()
 
-    fecha = _buscar_valor(data, FECHA_KEYS)
+    fecha = _buscar_valor(data, FECHA_KEYS) or data.get("fecha")
     glosa = _buscar_valor(data, GLOSA_KEYS) or _primer_texto_largo(data)
     monto, moneda, _col = extraer_monto_y_moneda(
         data,
@@ -213,6 +213,10 @@ def _extraer_subtipo(tipo_fuente: str, nombre_archivo: str) -> str | None:
     if "—" in tipo_fuente:
         return tipo_fuente.split("—", 1)[1].strip()
     nombre = nombre_archivo.lower()
+    if "scotiabank" in nombre or "scotia" in nombre:
+        if "internacional" in nombre or " inter" in nombre:
+            return "Internacionales"
+        return "Nacionales"
     if "internacional" in nombre:
         return "Internacionales"
     if "nacional" in nombre:

@@ -11,6 +11,11 @@ from openpyxl.utils import get_column_letter
 
 from app.services.file_models import HojaInspeccion, ReporteInspeccion, inferir_metadata_desde_nombre
 from app.services.format_detector import FormatoArchivo, detectar_formato, es_ooxml_zip
+from app.services.scotiabank_parser import (
+    construir_hoja_inspeccion,
+    es_estado_cuenta_scotiabank,
+    parsear_estado_cuenta_scotiabank,
+)
 
 
 def inspeccionar_archivo(content: bytes, nombre_archivo: str) -> ReporteInspeccion:
@@ -35,6 +40,11 @@ def inspeccionar_archivo(content: bytes, nombre_archivo: str) -> ReporteInspecci
         reporte.errores_lectura.append("No se pudo detectar un formato soportado (.csv, .xlsx, .xls).")
         return reporte
 
+    if formato in (FormatoArchivo.XLS_BINARIO, FormatoArchivo.XLSX_OOXML) and es_estado_cuenta_scotiabank(
+        content, nombre_archivo
+    ):
+        return _inspeccionar_scotiabank(content, nombre_archivo, metadata)
+
     try:
         if formato == FormatoArchivo.CSV:
             hoja = _inspeccionar_csv(content)
@@ -55,6 +65,24 @@ def inspeccionar_archivo(content: bytes, nombre_archivo: str) -> ReporteInspecci
         reporte.errores_lectura.append(f"Error al leer archivo: {exc}")
 
     return reporte
+
+
+def _inspeccionar_scotiabank(content: bytes, nombre_archivo: str, metadata: dict) -> ReporteInspeccion:
+    meta_parseo, movimientos = parsear_estado_cuenta_scotiabank(content)
+    hoja_dict = construir_hoja_inspeccion(movimientos)
+    hoja = HojaInspeccion(**hoja_dict)
+
+    return ReporteInspeccion(
+        archivo=nombre_archivo,
+        formato_detectado=FormatoArchivo.XLS_BINARIO.value,
+        hojas_detectadas=[hoja.nombre],
+        hojas=[hoja],
+        banco_inferido=meta_parseo.get("banco_inferido") or metadata.get("banco_inferido"),
+        tipo_fuente_inferido=meta_parseo.get("tipo_fuente_inferido") or metadata.get("tipo_fuente_inferido"),
+        subtipo_movimiento=meta_parseo.get("subtipo_movimiento") or metadata.get("subtipo_movimiento"),
+        fecha_referencial=meta_parseo.get("fecha_referencial") or metadata.get("fecha_referencial"),
+        errores_lectura=[] if movimientos else ["No se encontraron movimientos en el estado de cuenta Scotiabank."],
+    )
 
 
 def _detectar_fila_encabezado(filas: list[list[Any]], max_busqueda: int = 30) -> tuple[int | None, list[str]]:
@@ -145,6 +173,16 @@ def _inspeccionar_xls_binario(content: bytes) -> list[HojaInspeccion]:
 
 def extraer_filas_raw(content: bytes, nombre_archivo: str, reporte: ReporteInspeccion) -> list[dict]:
     """Extrae filas tabulares como dict usando encabezados detectados por hoja."""
+    if es_estado_cuenta_scotiabank(content, nombre_archivo):
+        _, movimientos = parsear_estado_cuenta_scotiabank(content)
+        resultado: list[dict] = []
+        for mov in movimientos:
+            registro = {k: v for k, v in mov.items() if not k.startswith("_")}
+            registro["_hoja_origen"] = mov.get("_hoja_origen", "estado_cta_trj")
+            registro["_fila_origen"] = int(mov.get("_fila_origen", 0))
+            resultado.append(registro)
+        return resultado
+
     formato = FormatoArchivo(reporte.formato_detectado)
     resultado: list[dict] = []
 

@@ -47,12 +47,20 @@ def inferir_metadata_desde_nombre(nombre_archivo: str) -> dict[str, str | None]:
         metadata["banco_inferido"] = "SANTANDER"
     elif "chile" in nombre or "banco de chile" in nombre:
         metadata["banco_inferido"] = "BANCO DE CHILE"
+    elif "scotiabank" in nombre or "scotia" in nombre:
+        metadata["banco_inferido"] = "SCOTIABANK"
 
     if "movimientosfacturados" in nombre.replace("_", "").replace(" ", ""):
         metadata["tipo_fuente_inferido"] = "Tarjeta / movimientos facturados"
         if "nacionales" in nombre:
             metadata["subtipo_movimiento"] = "Nacionales"
         elif "internacionales" in nombre:
+            metadata["subtipo_movimiento"] = "Internacionales"
+    elif "scotiabank" in nombre or "scotia" in nombre:
+        metadata["tipo_fuente_inferido"] = "Tarjeta de crédito"
+        if "nacional" in nombre:
+            metadata["subtipo_movimiento"] = "Nacionales"
+        elif "internacional" in nombre or " inter" in nombre:
             metadata["subtipo_movimiento"] = "Internacionales"
     elif "cartola" in nombre:
         metadata["tipo_fuente_inferido"] = "Cartola"
