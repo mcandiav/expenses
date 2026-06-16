@@ -17,6 +17,15 @@ CREATE TABLE IF NOT EXISTS usuario (
     fecha_ultimo_login TEXT
 );
 
+CREATE TABLE IF NOT EXISTS sesion_usuario (
+    token TEXT PRIMARY KEY,
+    usuario_id INTEGER NOT NULL REFERENCES usuario(id) ON DELETE CASCADE,
+    expira_en TEXT NOT NULL,
+    creada_en TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_sesion_usuario_expira ON sesion_usuario(expira_en);
+
 CREATE TABLE IF NOT EXISTS auditoria (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     usuario_id INTEGER REFERENCES usuario(id),

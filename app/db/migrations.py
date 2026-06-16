@@ -44,6 +44,31 @@ def run_data_migrations() -> None:
     _migration_20260614_fix_multimoneda_internacional()
     _migration_schema_columns()
     _migration_regla_patron_banco_unique()
+    _migration_sesion_usuario_table()
+
+
+def _migration_sesion_usuario_table() -> None:
+    migration_id = "20260616_sesion_usuario_table"
+    if _migration_aplicada(migration_id):
+        return
+
+    with get_connection() as conn:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS sesion_usuario (
+                token TEXT PRIMARY KEY,
+                usuario_id INTEGER NOT NULL REFERENCES usuario(id) ON DELETE CASCADE,
+                expira_en TEXT NOT NULL,
+                creada_en TEXT NOT NULL DEFAULT (datetime('now'))
+            )
+            """
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_sesion_usuario_expira ON sesion_usuario(expira_en)"
+        )
+        conn.commit()
+
+    _marcar_migration(migration_id, "Tabla sesion_usuario para login persistente.")
 
 
 def _migration_regla_patron_banco_unique() -> None:

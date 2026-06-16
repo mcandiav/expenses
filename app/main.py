@@ -7,7 +7,7 @@ from app.ui.login import render_login
 from app.ui.placeholders import render_placeholder
 from app.ui.movimientos import render_movimientos
 from app.ui.reglas_categorias import render_reglas_categorias
-from app.ui.session_auth import clear_session, init_session
+from app.ui.session_auth import clear_session, ensure_cookie_manager, init_session
 from app.ui.subir_archivos import render_subir_archivos
 from app.ui.usuarios import render_usuarios_roles
 from app.version_info import get_build_info
@@ -28,6 +28,7 @@ def main() -> None:
 
     _prepare_database_once()
     db_info = get_database_info()
+    ensure_cookie_manager()
     init_session()
 
     if "user" not in st.session_state:
