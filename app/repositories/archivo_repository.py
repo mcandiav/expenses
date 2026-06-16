@@ -124,3 +124,58 @@ def get_reporte_inspeccion(archivo_id: int) -> dict | None:
     if not row or not row["reporte_inspeccion_json"]:
         return None
     return json.loads(row["reporte_inspeccion_json"])
+
+
+def contar_movimientos(archivo_id: int) -> int:
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT COUNT(*) FROM movimiento WHERE archivo_id = ? AND activo = 1",
+            (archivo_id,),
+        ).fetchone()
+    return int(row[0]) if row else 0
+
+
+def eliminar_movimientos_de_archivo(archivo_id: int) -> int:
+    """Elimina movimientos normalizados; conserva staging raw para reprocesar."""
+    with get_connection() as conn:
+        mov_ids = [
+            r[0]
+            for r in conn.execute(
+                "SELECT id FROM movimiento WHERE archivo_id = ?", (archivo_id,)
+            ).fetchall()
+        ]
+        for mov_id in mov_ids:
+            conn.execute(
+                "DELETE FROM movimiento_categorizado WHERE movimiento_id = ?", (mov_id,)
+            )
+        cursor = conn.execute("DELETE FROM movimiento WHERE archivo_id = ?", (archivo_id,))
+        conn.commit()
+    return cursor.rowcount
+
+
+def eliminar_archivo_completo(archivo_id: int) -> dict:
+    with get_connection() as conn:
+        mov_count = conn.execute(
+            "SELECT COUNT(*) FROM movimiento WHERE archivo_id = ?", (archivo_id,)
+        ).fetchone()[0]
+        raw_count = conn.execute(
+            "SELECT COUNT(*) FROM movimiento_raw WHERE archivo_id = ?", (archivo_id,)
+        ).fetchone()[0]
+        mov_ids = [
+            r[0]
+            for r in conn.execute(
+                "SELECT id FROM movimiento WHERE archivo_id = ?", (archivo_id,)
+            ).fetchall()
+        ]
+        for mov_id in mov_ids:
+            conn.execute(
+                "DELETE FROM movimiento_categorizado WHERE movimiento_id = ?", (mov_id,)
+            )
+        conn.execute("DELETE FROM movimiento WHERE archivo_id = ?", (archivo_id,))
+        conn.execute("DELETE FROM movimiento_raw WHERE archivo_id = ?", (archivo_id,))
+        conn.execute("DELETE FROM archivo_importado WHERE id = ?", (archivo_id,))
+        conn.commit()
+    return {
+        "movimientos_eliminados": mov_count,
+        "filas_raw_eliminadas": raw_count,
+    }

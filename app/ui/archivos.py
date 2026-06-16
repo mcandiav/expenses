@@ -4,10 +4,11 @@ import pandas as pd
 import streamlit as st
 
 from app.repositories import archivo_repository
+from app.services.archivo_service import ArchivoService
 from app.ui.inspector_report import render_reporte_inspeccion
 
 
-def render_archivos_importados() -> None:
+def render_archivos_importados(user: dict) -> None:
     st.subheader("Archivos importados")
     archivos = archivo_repository.list_archivos()
 
@@ -47,10 +48,14 @@ def render_archivos_importados() -> None:
     if not detalle:
         return
 
+    mov_count = ArchivoService.contar_movimientos(archivo_id)
+
     col1, col2, col3 = st.columns(3)
     col1.write(f"**Hash:** `{detalle['hash_archivo'][:16]}…`")
     col2.write(f"**Fecha referencial:** {detalle.get('fecha_referencial') or '—'}")
-    col3.write(f"**Observación:** {detalle.get('observacion') or '—'}")
+    col3.write(f"**Movimientos:** {mov_count}")
+
+    st.caption(f"**Observación:** {detalle.get('observacion') or '—'}")
 
     if detalle.get("mensaje_error"):
         st.error(detalle["mensaje_error"])
@@ -63,3 +68,45 @@ def render_archivos_importados() -> None:
             render_reporte_inspeccion(reporte)
         else:
             st.warning("Sin reporte de inspección almacenado.")
+
+    if user.get("rol") == "admin":
+        st.divider()
+        st.markdown("#### Acciones")
+        col_rep, col_del = st.columns(2)
+        with col_rep:
+            if st.button("Reprocesar movimientos desde staging", key="arch_reprocesar"):
+                from app.services.normalization_service import normalizar_archivo
+
+                n = normalizar_archivo(archivo_id)
+                st.success(f"Se normalizaron {n} movimiento(s).")
+                st.rerun()
+        with col_del:
+            if st.button("Eliminar archivo completo", type="primary", key="arch_btn_del"):
+                st.session_state["arch_confirm_del_id"] = archivo_id
+
+        st.caption(
+            "Eliminar archivo: borra registro, movimientos y staging (permite volver a subirlo). "
+            "Para borrar solo movimientos normalizados, use **Movimientos** con filtro por archivo."
+        )
+
+        if st.session_state.get("arch_confirm_del_id") == archivo_id:
+            st.error(
+                f"¿Confirma eliminar **{detalle['nombre_archivo']}** "
+                f"({mov_count} movimiento(s))? Esta acción no se puede deshacer."
+            )
+            c1, c2 = st.columns(2)
+            if c1.button("Sí, eliminar", key="arch_ok_del"):
+                try:
+                    resumen = ArchivoService.eliminar_archivo_completo(
+                        archivo_id, usuario_id=user.get("id")
+                    )
+                    st.session_state.pop("arch_confirm_del_id", None)
+                    st.success(
+                        f"Archivo eliminado: {resumen['movimientos_eliminados']} movimiento(s)."
+                    )
+                    st.rerun()
+                except ValueError as exc:
+                    st.error(str(exc))
+            if c2.button("Cancelar", key="arch_cancel_del"):
+                st.session_state.pop("arch_confirm_del_id", None)
+                st.rerun()

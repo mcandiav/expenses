@@ -10,6 +10,7 @@ from app.ui.reglas_categorias import render_reglas_categorias
 from app.ui.session_auth import clear_session, init_session
 from app.ui.subir_archivos import render_subir_archivos
 from app.ui.usuarios import render_usuarios_roles
+from app.version_info import get_build_info
 
 
 @st.cache_resource
@@ -38,6 +39,10 @@ def main() -> None:
     with st.sidebar:
         st.markdown(f"**{user['nombre']}**")
         st.caption(f"{user['email']} · rol `{user['rol']}`")
+        build = get_build_info()
+        st.caption(
+            f"[{build['git_sha']}]({build['github_url']}) · {build['build_date']}"
+        )
         st.caption(
             f"📁 {db_info['total_movimientos']} mov. · {db_info['total_archivos']} archivos"
         )
@@ -67,7 +72,7 @@ def main() -> None:
             st.error("No tiene permisos para subir archivos.")
 
     with tab_objects[2]:
-        render_archivos_importados()
+        render_archivos_importados(user)
 
     with tab_objects[3]:
         render_movimientos(user)

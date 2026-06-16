@@ -9,6 +9,9 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
+COPY scripts/write_build_info.py ./scripts/write_build_info.py
+
+ARG APP_GIT_SHA=unknown
 
 ENV EXPENSAS_DATA_DIR=/expensas-data
 ENV PYTHONPATH=/app

@@ -5,6 +5,7 @@ import streamlit as st
 
 from app.repositories.movimiento_repository import FiltrosMovimiento
 from app.services.movimiento_service import MovimientoService
+from app.services.archivo_service import ArchivoService
 from app.ui.regla_dialog import abrir_dialog_regla
 
 COLUMNAS_DISPLAY = {
@@ -164,6 +165,73 @@ def render_movimientos(user: dict) -> None:
             st.rerun()
 
     filtros = _leer_filtros(opciones)
+
+    if user.get("rol") == "admin" and filtros.archivo_id:
+        archivo_sel = st.session_state.get("mov_f_archivo", "")
+        total_archivo = ArchivoService.contar_movimientos(filtros.archivo_id)
+        st.warning(
+            f"Filtro activo por archivo: **{archivo_sel}** ({total_archivo} movimiento(s) en total)."
+        )
+        col_del_mov, col_del_arch = st.columns(2)
+        with col_del_mov:
+            if st.button(
+                f"Eliminar movimientos de este archivo ({total_archivo})",
+                key="btn_del_mov_archivo",
+                use_container_width=True,
+            ):
+                st.session_state["confirm_del_mov_archivo"] = True
+        with col_del_arch:
+            if st.button(
+                "Eliminar archivo completo (permite volver a subirlo)",
+                key="btn_del_archivo_completo",
+                use_container_width=True,
+            ):
+                st.session_state["confirm_del_archivo_completo"] = True
+
+        if st.session_state.get("confirm_del_mov_archivo"):
+            st.error(
+                "Se eliminarán los movimientos normalizados de este archivo. "
+                "El staging se conserva para reprocesar desde Archivos importados."
+            )
+            c1, c2 = st.columns(2)
+            if c1.button("Confirmar eliminación de movimientos", type="primary", key="ok_del_mov"):
+                try:
+                    n = ArchivoService.eliminar_movimientos_de_archivo(
+                        filtros.archivo_id, usuario_id=user.get("id")
+                    )
+                    st.session_state.pop("confirm_del_mov_archivo", None)
+                    st.success(f"Se eliminaron {n} movimiento(s). Puede reprocesar desde Archivos importados.")
+                    st.rerun()
+                except ValueError as exc:
+                    st.error(str(exc))
+            if c2.button("Cancelar", key="cancel_del_mov"):
+                st.session_state.pop("confirm_del_mov_archivo", None)
+                st.rerun()
+
+        if st.session_state.get("confirm_del_archivo_completo"):
+            st.error(
+                "Se eliminará el archivo, sus movimientos y el registro de importación. "
+                "Podrá subirlo nuevamente con el mismo nombre."
+            )
+            c1, c2 = st.columns(2)
+            if c1.button("Confirmar eliminación total", type="primary", key="ok_del_arch"):
+                try:
+                    resumen = ArchivoService.eliminar_archivo_completo(
+                        filtros.archivo_id, usuario_id=user.get("id")
+                    )
+                    st.session_state.pop("confirm_del_archivo_completo", None)
+                    st.session_state.pop("mov_f_archivo", None)
+                    st.success(
+                        f"Archivo eliminado: {resumen['movimientos_eliminados']} movimiento(s), "
+                        f"{resumen['filas_raw_eliminadas']} fila(s) staging."
+                    )
+                    st.rerun()
+                except ValueError as exc:
+                    st.error(str(exc))
+            if c2.button("Cancelar", key="cancel_del_arch"):
+                st.session_state.pop("confirm_del_archivo_completo", None)
+                st.rerun()
+
     movimientos, total = service.listar(
         filtros=filtros,
         orden_columna=st.session_state["mov_orden_col"],
